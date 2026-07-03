@@ -1,0 +1,40 @@
+site_name: mapwidgets
+site_description: PySide6 map widgets with MapLibre GL JS and Google Maps backends.
+docs_dir: mkdocs
+site_dir: docs
+use_directory_urls: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quick-start.md
+      - Backends: getting-started/backends.md
+  - Guides:
+      - Map Elements: guides/map-elements.md
+      - Layers: guides/layers.md
+      - GeoTIFF Tiling: guides/geotiff-tiling.md
+      - View Control: guides/view-control.md
+  - API Reference:
+      - Overview: api/index.md
+      - Viewers: api/viewers.md
+      - Elements: api/elements.md
+      - Layers: api/layers.md
+      - Raster Tiles: api/raster-tiles.md
+  - Development: development.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight

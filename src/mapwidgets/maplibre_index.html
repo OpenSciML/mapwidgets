@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+    <meta charset="UTF-8">
+    <title>MapLibre Viewer</title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      var map;
+      var qtMapViewer;
+      var nextLayerId = 1;
+      var terrainControl;
+
+      new QWebChannel(qt.webChannelTransport, (channel) => {
+        qtMapViewer = channel.objects.qtMapViewer;
+        initMap();
+      });
+
+      function notifyMapReady() {
+        if (qtMapViewer && qtMapViewer.on_map_ready) {
+          qtMapViewer.on_map_ready();
+        }
+      }
+
+      async function initMap() {
+        console.log("Initializing MapLibre map...");
+        await qtMapViewer.log("Initializing MapLibre map...");
+        map = new maplibregl.Map({
+          container: "map",
+          style: {
+            version: 8,
+            sources: {
+              osm: {
+                type: "raster",
+                tiles: ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                tileSize: 256,
+                attribution: "&copy; OpenStreetMap Contributors",
+                maxzoom: 19,
+              },
+            },
+            layers: [
+              {
+                id: "osm",
+                type: "raster",
+                source: "osm",
+              },
+            ],
+          },
+          center: [150.644, -34.397],
+          zoom: 12,
+          maxPitch: 85,
+        });
+        map.addControl(
+          new maplibregl.NavigationControl({ visualizePitch: true }),
+          "top-right"
+        );
+        map.on("error", (event) => {
+          const message = maplibre_errorMessage(event);
+          console.error(message, event);
+          if (qtMapViewer && qtMapViewer.log) {
+            qtMapViewer.log(`MapLibre error: ${message}`);
+          }
+        });
+        map.on("load", notifyMapReady);
+      }
+
+      function maplibre_errorMessage(event) {
+        if (!event) {
+          return "Unknown error";
+        }
+        const error = event.error;
+        const parts = [];
+        if (event.sourceId) {
+          parts.push(`source=${event.sourceId}`);
+        }
+        if (event.tile && event.tile.tileID) {
+          const tileId = event.tile.tileID;
+          const canonical = tileId.canonical || {};
+          parts.push(`tile=z${tileId.overscaledZ ?? canonical.z}/${canonical.x}/${canonical.y}`);
+        }
+        if (error) {
+          if (error.status) {
+            parts.push(`status=${error.status}`);
+          }
+          if (error.url) {
+            parts.push(`url=${error.url}`);
+          }
+          if (error.message) {
+            parts.push(error.message);
+          } else {
+            parts.push(maplibre_stringifyError(error));
+          }
+        } else {
+          parts.push(maplibre_stringifyError(event));
+        }
+        return parts.join(" ");
+      }
+
+      function maplibre_stringifyError(value) {
+        if (!value) {
+          return "Unknown error";
+        }
+        if (typeof value === "string") {
+          return value;
+        }
+        try {
+          return JSON.stringify(value, Object.getOwnPropertyNames(value));
+        } catch {
+          return String(value);
+        }
+      }
+
+      function nextId(prefix) {
+        const id = `${prefix}-${nextLayerId}`;
+        nextLayerId += 1;
+        return id;
+      }
+
+      function lngLat(point) {
+        return [point.lng, point.lat];
+      }
+
+      function notifyElementClicked(elementType, elementProperties) {
+        if (!qtMapViewer || !qtMapViewer.on_element_click) {
+          return;
+        }
+        const payload = {
+          type: elementType,
+          properties: elementProperties.properties || {},
+          element: elementProperties,
+        };
+        qtMapViewer.on_element_click(elementType, JSON.stringify(payload));
+      }
+
+      function maplibre_setCenter(lat, lng) {
+        if (map) {
+          map.setCenter([lng, lat]);
+        }
+      }
+
+      function maplibre_setZoom(zoom) {
+        if (map) {
+          map.setZoom(zoom);
+        }
+      }
+
+      function maplibre_setProjection(projection) {
+        if (map && map.setProjection) {
+          map.setProjection({ type: projection });
+        }
+      }
+
+      function maplibre_setPitch(pitch) {
+        if (map) {
+          map.setPitch(pitch);
+        }
+      }
+
+      function maplibre_setBearing(bearing) {
+        if (map) {
+          map.setBearing(bearing);
+        }
+      }
+
+      function maplibre_addTerrain(terrainConfig) {
+        if (!map) {
+          return;
+        }
+
+        const sourceId = terrainConfig.name || "terrain";
+        if (!map.getSource(sourceId)) {
+          const sourceConfig = {
+            type: "raster-dem",
+          };
+          if (terrainConfig.url) {
+            sourceConfig.url = terrainConfig.url;
+          } else {
+            const maxZoom = terrainConfig.maxZoom ?? terrainConfig.maxzoom ?? 22;
+            sourceConfig.tiles = terrainConfig.tiles;
+            sourceConfig.tileSize = terrainConfig.tileSize || 256;
+            sourceConfig.encoding = terrainConfig.encoding || "terrarium";
+            sourceConfig.maxzoom = maxZoom;
+          }
+          if (terrainConfig.attribution) {
+            sourceConfig.attribution = terrainConfig.attribution;
+          }
+          map.addSource(sourceId, sourceConfig);
+        }
+
+        map.setTerrain({
+          source: sourceId,
+          exaggeration: terrainConfig.exaggeration ?? 1.0,
+        });
+
+        if (!terrainControl && maplibregl.TerrainControl) {
+          terrainControl = new maplibregl.TerrainControl({
+            source: sourceId,
+            exaggeration: terrainConfig.exaggeration ?? 1.0,
+          });
+          map.addControl(terrainControl, "top-right");
+        }
+
+        const hillshadeId = `${sourceId}-hillshade`;
+        if (terrainConfig.showHillshade !== false && !map.getLayer(hillshadeId)) {
+          map.addLayer(
+            {
+              id: hillshadeId,
+              type: "hillshade",
+              source: sourceId,
+              paint: {
+                "hillshade-shadow-color": "#473B24",
+                "hillshade-highlight-color": "#ffffff",
+                "hillshade-accent-color": "#5a6f7d",
+              },
+            },
+            map.getStyle().layers.find((layer) => layer.type === "symbol")?.id
+          );
+        }
+      }
+
+      function maplibre_fitBounds(bounds, options = {}) {
+        if (map) {
+          const fitOptions = {
+            padding: options.padding ?? 32,
+          };
+          if (options.maxZoom !== null && options.maxZoom !== undefined) {
+            fitOptions.maxZoom = options.maxZoom;
+          }
+          map.fitBounds(
+            [
+              [bounds.west, bounds.south],
+              [bounds.east, bounds.north],
+            ],
+            fitOptions
+          );
+        }
+      }
+
+      function maplibre_addMarker(markerProperties, centerToMarker = false) {
+        if (!map || !markerProperties.position) {
+          return;
+        }
+        const marker = new maplibregl.Marker({
+          draggable: markerProperties.draggable || false,
+        }).setLngLat(lngLat(markerProperties.position));
+        if (markerProperties.title) {
+          marker.setPopup(new maplibregl.Popup().setText(markerProperties.title));
+        }
+        marker.addTo(map);
+        marker.getElement().addEventListener("click", () => {
+          notifyElementClicked("marker", markerProperties);
+        });
+        if (centerToMarker) {
+          map.panTo(lngLat(markerProperties.position));
+        }
+      }
+
+      function maplibre_addPolyline(polylineProperties, centerToPolyline = false) {
+        if (!map || !polylineProperties.path || polylineProperties.path.length === 0) {
+          return;
+        }
+        const sourceId = nextId("polyline-source");
+        const layerId = nextId("polyline-layer");
+        map.addSource(sourceId, {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: polylineProperties.path.map(lngLat),
+            },
+            properties: polylineProperties.properties || {},
+          },
+        });
+        map.addLayer({
+          id: layerId,
+          type: "line",
+          source: sourceId,
+          paint: {
+            "line-color": polylineProperties.strokeColor || "#1f78ff",
+            "line-opacity": polylineProperties.strokeOpacity ?? 1,
+            "line-width": polylineProperties.strokeWeight || 3,
+          },
+        });
+        map.on("click", layerId, () => {
+          notifyElementClicked("polyline", polylineProperties);
+        });
+        map.on("mouseenter", layerId, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layerId, () => {
+          map.getCanvas().style.cursor = "";
+        });
+        if (centerToPolyline) {
+          map.panTo(lngLat(polylineProperties.path[0]));
+        }
+      }
+
+      function maplibre_addPolygon(polygonProperties, centerToPolygon = false) {
+        if (!map || !polygonProperties.paths || polygonProperties.paths.length === 0) {
+          return;
+        }
+        const sourceId = nextId("polygon-source");
+        const fillLayerId = nextId("polygon-fill-layer");
+        const strokeLayerId = nextId("polygon-stroke-layer");
+        const coordinates = polygonProperties.paths.map(lngLat);
+        if (coordinates.length > 0) {
+          const first = coordinates[0];
+          const last = coordinates[coordinates.length - 1];
+          if (first[0] !== last[0] || first[1] !== last[1]) {
+            coordinates.push(first);
+          }
+        }
+        map.addSource(sourceId, {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            geometry: {
+              type: "Polygon",
+              coordinates: [coordinates],
+            },
+            properties: polygonProperties.properties || {},
+          },
+        });
+        map.addLayer({
+          id: fillLayerId,
+          type: "fill",
+          source: sourceId,
+          paint: {
+            "fill-color": polygonProperties.fillColor || "#1f78ff",
+            "fill-opacity": polygonProperties.fillOpacity ?? 0.35,
+          },
+        });
+        map.addLayer({
+          id: strokeLayerId,
+          type: "line",
+          source: sourceId,
+          paint: {
+            "line-color": polygonProperties.strokeColor || "#1f78ff",
+            "line-opacity": polygonProperties.strokeOpacity ?? 1,
+            "line-width": polygonProperties.strokeWeight || 2,
+          },
+        });
+        map.on("click", fillLayerId, () => {
+          notifyElementClicked("polygon", polygonProperties);
+        });
+        map.on("mouseenter", fillLayerId, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", fillLayerId, () => {
+          map.getCanvas().style.cursor = "";
+        });
+        if (centerToPolygon) {
+          map.panTo(coordinates[0]);
+        }
+      }
+
+      function maplibre_addTileOverlay(tileLayerConfig) {
+        if (!map) {
+          return;
+        }
+        const sourceId = tileLayerConfig.id ? `${tileLayerConfig.id}-source` : nextId("tile-source");
+        const layerId = tileLayerConfig.id || nextId("tile-layer");
+        let tileUrl = `${tileLayerConfig.baseUrl}/{z}/{x}/{y}.png`;
+        if (tileLayerConfig.cacheKey) {
+          tileUrl = `${tileUrl}?v=${encodeURIComponent(tileLayerConfig.cacheKey)}`;
+        }
+        if (qtMapViewer && qtMapViewer.log) {
+          qtMapViewer.log(`Adding raster layer ${layerId} from ${tileUrl}`);
+        }
+        const sourceConfig = {
+          type: "raster",
+          tiles: [tileUrl],
+          tileSize: tileLayerConfig.tileSize || 256,
+          minzoom: tileLayerConfig.minZoom,
+          maxzoom: tileLayerConfig.maxZoom,
+        };
+        if (tileLayerConfig.bounds) {
+          sourceConfig.bounds = [
+            tileLayerConfig.bounds.west,
+            tileLayerConfig.bounds.south,
+            tileLayerConfig.bounds.east,
+            tileLayerConfig.bounds.north,
+          ];
+        }
+        map.addSource(sourceId, sourceConfig);
+        map.addLayer({
+          id: layerId,
+          type: "raster",
+          source: sourceId,
+          paint: {
+            "raster-opacity": tileLayerConfig.opacity ?? 1.0,
+          },
+        });
+      }
+
+      function maplibre_addLayer(layerConfig) {
+        if (!map || !layerConfig) {
+          return;
+        }
+        if (layerConfig.type === "raster") {
+          maplibre_addTileOverlay(layerConfig);
+          return;
+        }
+        if (layerConfig.type === "vector") {
+          maplibre_addGeoJsonLayer(layerConfig);
+        }
+      }
+
+      function maplibre_addGeoJsonLayer(layerConfig) {
+        const baseId = layerConfig.id || nextId("geojson");
+        const sourceId = `${baseId}-source`;
+        const paint = layerConfig.paint || {};
+        if (!map.getSource(sourceId)) {
+          map.addSource(sourceId, {
+            type: "geojson",
+            data: layerConfig.data,
+          });
+        }
+
+        const geometryTypes = geoJsonGeometryTypes(layerConfig.data);
+        const mode = layerConfig.geometry || "auto";
+        if ((mode === "auto" && geometryTypes.has("polygon")) || mode === "polygon") {
+          map.addLayer({
+            id: `${baseId}-fill`,
+            type: "fill",
+            source: sourceId,
+            filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+            paint: {
+              "fill-color": paint.fillColor || "#1f78ff",
+              "fill-opacity": paint.fillOpacity ?? 0.35,
+            },
+          });
+          map.addLayer({
+            id: `${baseId}-outline`,
+            type: "line",
+            source: sourceId,
+            filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+            paint: {
+              "line-color": paint.strokeColor || "#1f78ff",
+              "line-opacity": paint.strokeOpacity ?? 1,
+              "line-width": paint.strokeWidth || 2,
+            },
+          });
+        }
+        if ((mode === "auto" && geometryTypes.has("line")) || mode === "line") {
+          map.addLayer({
+            id: `${baseId}-line`,
+            type: "line",
+            source: sourceId,
+            filter: ["any", ["==", ["geometry-type"], "LineString"], ["==", ["geometry-type"], "MultiLineString"]],
+            paint: {
+              "line-color": paint.strokeColor || "#1f78ff",
+              "line-opacity": paint.strokeOpacity ?? 1,
+              "line-width": paint.strokeWidth || 2,
+            },
+          });
+        }
+        if ((mode === "auto" && geometryTypes.has("point")) || mode === "point") {
+          map.addLayer({
+            id: `${baseId}-circle`,
+            type: "circle",
+            source: sourceId,
+            filter: ["any", ["==", ["geometry-type"], "Point"], ["==", ["geometry-type"], "MultiPoint"]],
+            paint: {
+              "circle-color": paint.circleColor || "#1f78ff",
+              "circle-radius": paint.circleRadius || 5,
+              "circle-stroke-color": paint.strokeColor || "#ffffff",
+              "circle-stroke-width": 1,
+            },
+          });
+        }
+      }
+
+      function geoJsonGeometryTypes(data) {
+        const types = new Set();
+        const features = data.type === "FeatureCollection" ? data.features : [data];
+        for (const feature of features || []) {
+          const geometry = feature.type === "Feature" ? feature.geometry : feature;
+          const geometryType = geometry && geometry.type;
+          if (geometryType === "Polygon" || geometryType === "MultiPolygon") {
+            types.add("polygon");
+          } else if (geometryType === "LineString" || geometryType === "MultiLineString") {
+            types.add("line");
+          } else if (geometryType === "Point" || geometryType === "MultiPoint") {
+            types.add("point");
+          }
+        }
+        return types;
+      }
+    </script>
+  </body>
+</html>

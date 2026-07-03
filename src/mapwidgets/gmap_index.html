@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+    <meta charset="UTF-8">
+    <title>Map Viewer</title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      var map;
+      var qtMapViewer;
+
+      new QWebChannel(qt.webChannelTransport, (channel) => {
+        qtMapViewer = channel.objects.qtMapViewer;
+        qtMapViewer.getApiKey(); // Request API key from PySide6
+      });
+
+      function notifyMapReady() {
+        if (qtMapViewer && qtMapViewer.on_map_ready) {
+            qtMapViewer.on_map_ready();
+        }
+    }
+
+      async function initMap() {
+        console.log("Initializing Map...");
+        await qtMapViewer.log("Initializing Map...");
+        const { Map } = await google.maps.importLibrary("maps");
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+         let mapOptions = {
+            center: { lat: -34.397, lng: 150.644 },
+            zoom: 12,
+            mapTypeId: "satellite",
+            mapId: "GPR_STUDIO_MAP_VIEWER",
+            streetViewControl: true, // Enable Street View control
+        };
+        map = new Map(document.getElementById("map"), mapOptions);
+        google.maps.event.addListenerOnce(map, 'tilesloaded', () => {
+            notifyMapReady();
+        });
+      }
+
+      function loadGoogleMaps(apiKey) {
+          const script = document.createElement('script');
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap&v=weekly&libraries=marker&loading=async`; // Replace YOUR_API_KEY
+          script.async = true;
+          script.defer = true;
+          script.onerror = function() {
+            console.error('Failed to load Google Maps API.');
+          };
+        document.head.appendChild(script);
+     }
+
+      function gmap_setCenter(lat, lng) {
+        if(map) {
+            map.setCenter(new google.maps.LatLng(lat, lng));
+        }
+      }
+
+      function gmap_setZoom(zoom) {
+        if(map) {
+            map.setZoom(zoom);
+        }
+      }
+
+      function gmap_setTilt(tilt) {
+        if(map && map.setTilt) {
+            map.setTilt(tilt);
+        }
+      }
+
+      function gmap_setHeading(heading) {
+        if(map && map.setHeading) {
+            map.setHeading(heading);
+        }
+      }
+
+      function gmap_fitBounds(bounds, options = {}) {
+        if(map) {
+            const latLngBounds = new google.maps.LatLngBounds(
+                new google.maps.LatLng(bounds.south, bounds.west),
+                new google.maps.LatLng(bounds.north, bounds.east)
+            );
+            map.fitBounds(latLngBounds, options.padding ?? 32);
+            if (options.maxZoom !== null && options.maxZoom !== undefined) {
+              google.maps.event.addListenerOnce(map, "idle", () => {
+                if (map.getZoom() > options.maxZoom) {
+                  map.setZoom(options.maxZoom);
+                }
+              });
+            }
+        }
+      }
+
+      function notifyElementClicked(elementType, elementProperties) {
+        if (!qtMapViewer || !qtMapViewer.on_element_click) {
+          return;
+        }
+        const payload = {
+          type: elementType,
+          properties: elementProperties.properties || {},
+          element: elementProperties,
+        };
+        qtMapViewer.on_element_click(elementType, JSON.stringify(payload));
+      }
+
+      async function gmap_addMarker(markerProperties, centerToMarker = false) {
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+          const { properties, ...googleMarkerProperties } = markerProperties;
+          const marker = new AdvancedMarkerElement({
+              map,
+            ...googleMarkerProperties
+          });
+          marker.addListener("click", () => {
+            notifyElementClicked("marker", markerProperties);
+          });
+          if (centerToMarker) {
+            const { lat, lng } = markerProperties.position;
+            const newCenter = new google.maps.LatLng(lat, lng);
+              map.panTo(newCenter);
+          }
+      }
+      async function gmap_addPolyline(polylineProperties, centerToPolyline = false) {
+          const { properties, ...googlePolylineProperties } = polylineProperties;
+          let polyline = new google.maps.Polyline(googlePolylineProperties);
+          polyline.setMap(map);
+          polyline.addListener("click", () => {
+            notifyElementClicked("polyline", polylineProperties);
+          });
+          if(centerToPolyline) {
+              map.panTo(polyline.getPath().getAt(0));
+          }
+      }
+      async function gmap_addPolygon(polygonProperties, centerToPolygon = false) {
+          const { properties, ...googlePolygonProperties } = polygonProperties;
+          let polygon = new google.maps.Polygon(googlePolygonProperties);
+          polygon.setMap(map);
+          polygon.addListener("click", () => {
+            notifyElementClicked("polygon", polygonProperties);
+          });
+          if(centerToPolygon && polygonProperties.paths && polygonProperties.paths.length > 0) {
+              const firstPoint = polygonProperties.paths[0];
+              map.panTo(new google.maps.LatLng(firstPoint.lat, firstPoint.lng));
+          }
+      }
+
+      function gmap_addTileOverlay(tileLayerConfig) {
+        if (!map) {
+          return;
+        }
+
+        const tileLayer = new google.maps.ImageMapType({
+          getTileUrl: (coord, zoom) => {
+            if (zoom < tileLayerConfig.minZoom || zoom > tileLayerConfig.maxZoom) {
+              return null;
+            }
+            const tileUrl = `${tileLayerConfig.baseUrl}/${zoom}/${coord.x}/${coord.y}.png`;
+            if (tileLayerConfig.cacheKey) {
+              return `${tileUrl}?v=${encodeURIComponent(tileLayerConfig.cacheKey)}`;
+            }
+            return tileUrl;
+          },
+          tileSize: new google.maps.Size(
+            tileLayerConfig.tileSize || 256,
+            tileLayerConfig.tileSize || 256
+          ),
+          minZoom: tileLayerConfig.minZoom,
+          maxZoom: tileLayerConfig.maxZoom,
+          name: tileLayerConfig.name || "Orthomosaic",
+          opacity: tileLayerConfig.opacity ?? 1.0,
+        });
+
+        map.overlayMapTypes.push(tileLayer);
+      }
+
+      function gmap_addLayer(layerConfig) {
+        if (!map || !layerConfig) {
+          return;
+        }
+        if (layerConfig.type === "raster") {
+          gmap_addTileOverlay(layerConfig);
+          return;
+        }
+        if (layerConfig.type === "vector") {
+          gmap_addGeoJsonLayer(layerConfig);
+        }
+      }
+
+      function gmap_addGeoJsonLayer(layerConfig) {
+        const paint = layerConfig.paint || {};
+        map.data.addGeoJson(layerConfig.data);
+        map.data.setStyle((feature) => {
+          const geometryType = feature.getGeometry().getType();
+          if (geometryType === "Point" || geometryType === "MultiPoint") {
+            return {
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: paint.circleColor || "#1f78ff",
+                fillOpacity: 1,
+                strokeColor: paint.strokeColor || "#ffffff",
+                strokeWeight: 1,
+                scale: paint.circleRadius || 5,
+              },
+            };
+          }
+          return {
+            fillColor: paint.fillColor || "#1f78ff",
+            fillOpacity: paint.fillOpacity ?? 0.35,
+            strokeColor: paint.strokeColor || "#1f78ff",
+            strokeOpacity: paint.strokeOpacity ?? 1,
+            strokeWeight: paint.strokeWidth || 2,
+          };
+        });
+      }
+
+    </script>
+  </body>
+</html>

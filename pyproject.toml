@@ -1,0 +1,36 @@
+[project]
+name = "mapwidgets"
+version = "0.1.0"
+description = "PySide6 map widgets with MapLibre GL JS and Google Maps backends."
+readme = "README.md"
+authors = [
+    { name = "haruiz", email = "henryruiz22@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.13.4",
+    "python-dotenv>=1.2.2",
+]
+
+[project.scripts]
+mapwidgets = "mapwidgets.cli:main"
+
+[project.optional-dependencies]
+pyside = [
+    "pyside6>=6.11.1",
+]
+geospatial = [
+    "gdal>=3.13.1",
+    "geopandas>=1.1.4",
+    "rasterio>=1.4.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.0",
+]
