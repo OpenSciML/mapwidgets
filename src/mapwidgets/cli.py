@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     from PySide6.QtCore import QSize
     from PySide6.QtWidgets import QApplication
 
-    from mapwidgets import MapViewer, Marker
+    from mapwidgets import MapViewer, Marker, Point
 
     api_key = os.getenv("GOOGLE_MAPS_API_KEY")
     if args.backend == "google" and not api_key:
@@ -62,8 +62,8 @@ def main(argv: list[str] | None = None) -> int:
         .set_center(args.lat, args.lng)
         .set_zoom(args.zoom)
         .add_marker(
-            Marker(
-                position={"lat": args.lat, "lng": args.lng},
+            Marker(  # type: ignore[call-arg]
+                position=Point(lat=args.lat, lng=args.lng),
                 title="Map center",
             )
         )

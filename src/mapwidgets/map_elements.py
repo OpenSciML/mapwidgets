@@ -1,20 +1,23 @@
 """Shared Pydantic schemas for map rendering backends."""
 
-from typing import Any, Optional, Type
+from typing import Any, cast
 
 from pydantic import BaseModel, create_model
 
 
-def partial_model(model: Type[BaseModel]) -> Type[BaseModel]:
+def partial_model(model: type[BaseModel]) -> type[BaseModel]:
     """Return a Pydantic model with all fields made optional."""
-    fields = {}
+    fields: dict[str, Any] = {}
     for field_name, field_type in model.__annotations__.items():
-        fields[field_name] = (Optional[field_type], None)
-    return create_model(
-        f"Partial{model.__name__}",
-        __base__=model,
-        __module__=model.__module__,
-        **fields,
+        fields[field_name] = (field_type | None, None)
+    return cast(
+        type[BaseModel],
+        create_model(
+            f"Partial{model.__name__}",
+            __base__=model,
+            __module__=model.__module__,
+            **fields,
+        ),
     )
 
 

@@ -183,7 +183,9 @@ class RasterLayer:
             )
 
         metadata_path = tiles_dir / "metadata.json"
-        metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
+        metadata = (
+            json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
+        )
 
         return cls.from_geotiff(
             geotiff_path,

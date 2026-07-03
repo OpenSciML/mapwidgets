@@ -6,7 +6,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 try:
-    from PySide6.QtCore import QObject, QEventLoop, QUrl, Signal, Slot
+    from PySide6.QtCore import QEventLoop, QObject, QUrl, Signal, Slot
     from PySide6.QtWebChannel import QWebChannel
     from PySide6.QtWebEngineCore import QWebEngineSettings
     from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -16,7 +16,7 @@ except ImportError as exc:
         "`pip install mapwidgets[pyside]`."
     ) from exc
 
-from .map_elements import Marker, Polygon, Polyline
+from .map_elements import Marker, Point, Polygon, Polyline
 
 
 def _validate_lnglat_bounds(bounds: dict[str, float]) -> dict[str, float]:
@@ -25,7 +25,7 @@ def _validate_lnglat_bounds(bounds: dict[str, float]) -> dict[str, float]:
     south = bounds.get("south")
     east = bounds.get("east")
     west = bounds.get("west")
-    if None in {north, south, east, west}:
+    if north is None or south is None or east is None or west is None:
         raise ValueError("Bounds must include north, south, east, and west.")
     if not -90 <= south <= 90 or not -90 <= north <= 90:
         raise ValueError(
@@ -122,9 +122,7 @@ class BaseMapViewer:
         self._page.setWebChannel(self._channel)
         self._handler = MapViewerFrontendEventHandler(self, self.api_key)
         self._map_ready = False
-        self._pending_scripts: list[
-            tuple[str, Callable[[Any], None] | None]
-        ] = []
+        self._pending_scripts: list[tuple[str, Callable[[Any], None] | None]] = []
         self._element_click_callbacks: list[Callable[[str, dict[str, Any]], None]] = []
         self._handler.mapReady.connect(self._mark_map_ready)
         self._handler.elementClicked.connect(self._dispatch_element_click)
@@ -144,7 +142,9 @@ class BaseMapViewer:
         """Delegate unknown attributes to the internal QWebEngineView."""
         if hasattr(self._view, name):
             return getattr(self._view, name)
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
 
     def _backend_function(self, function_name: str) -> str:
         """Return the JavaScript function name for this backend."""
@@ -229,9 +229,7 @@ class BaseMapViewer:
             self._page.runJavaScript(script)
         return self
 
-    def on_element_click(
-        self, callback: Callable[[str, dict[str, Any]], None]
-    ) -> Self:
+    def on_element_click(self, callback: Callable[[str, dict[str, Any]], None]) -> Self:
         """Register a callback for marker, polyline, and polygon clicks.
 
         Parameters
@@ -246,10 +244,7 @@ class BaseMapViewer:
 
     def _dispatch_element_click(self, element_type: str, payload: object) -> None:
         """Dispatch a frontend element-click payload to registered callbacks."""
-        if isinstance(payload, dict):
-            payload_dict = payload
-        else:
-            payload_dict = {"value": payload}
+        payload_dict = payload if isinstance(payload, dict) else {"value": payload}
         for callback in self._element_click_callbacks:
             callback(element_type, payload_dict)
 
@@ -285,8 +280,8 @@ class BaseMapViewer:
             self.set_zoom(zoom)
         if add_marker:
             self.add_marker(
-                Marker(
-                    position={"lat": lat, "lng": lng},
+                Marker(  # type: ignore[call-arg]
+                    position=Point(lat=lat, lng=lng),
                     title="Current location",
                 )
             )
@@ -480,7 +475,7 @@ class GoogleMapViewer(BaseMapViewer):
         """
         if not api_key:
             raise ValueError("Google Maps backend requires an API key.")
-        super().__init__(api_key=api_key, *args, **kwargs)
+        super().__init__(api_key=api_key, *args, **kwargs)  # type: ignore[misc]
 
     def set_tilt(self, tilt: float) -> Self:
         """Set Google Maps camera tilt and return this viewer."""
@@ -600,9 +595,9 @@ def MapViewer(
 
     backend_key = backend.lower()
     if backend_key in GOOGLE_BACKEND_ALIASES:
-        return GoogleMapViewer(api_key=api_key, *args, **kwargs)
+        return GoogleMapViewer(api_key=api_key, *args, **kwargs)  # type: ignore[misc]
     if backend_key in MAPLIBRE_BACKEND_ALIASES:
-        return MapLibreViewer(api_key=api_key, *args, **kwargs)
+        return MapLibreViewer(api_key=api_key, *args, **kwargs)  # type: ignore[misc]
 
     supported_backends = ", ".join(sorted(SUPPORTED_BACKENDS))
     raise ValueError(

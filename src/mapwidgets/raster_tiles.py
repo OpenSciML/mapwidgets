@@ -9,11 +9,10 @@ import subprocess
 import sys
 import time
 import zlib
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from .layers._utils import read_geotiff_bounds
-
 
 WEB_MERCATOR_CRS = "EPSG:3857"
 WGS84_CRS = "EPSG:4326"
@@ -405,7 +404,9 @@ def _write_tile_metadata(
         json.dump(metadata, file, indent=2)
 
 
-def _transform_bounds(*args: object, **kwargs: object) -> tuple[float, float, float, float]:
+def _transform_bounds(
+    *args: object, **kwargs: object
+) -> tuple[float, float, float, float]:
     """Import rasterio lazily and transform bounds."""
     try:
         from rasterio.warp import transform_bounds
@@ -555,20 +556,22 @@ def _tile_directory_satisfies(
 
 def _transparent_png(size: int) -> bytes:
     """Return a transparent RGBA PNG with the requested square size."""
+
     def chunk(kind: bytes, data: bytes) -> bytes:
         """Return a PNG chunk for a four-byte chunk type and payload."""
         crc = zlib.crc32(kind + data) & 0xFFFFFFFF
         return len(data).to_bytes(4, "big") + kind + data + crc.to_bytes(4, "big")
 
     signature = b"\x89PNG\r\n\x1a\n"
-    ihdr = (
-        size.to_bytes(4, "big")
-        + size.to_bytes(4, "big")
-        + b"\x08\x06\x00\x00\x00"
-    )
+    ihdr = size.to_bytes(4, "big") + size.to_bytes(4, "big") + b"\x08\x06\x00\x00\x00"
     row = b"\x00" + (b"\x00\x00\x00\x00" * size)
     raw = row * size
-    return signature + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+    return (
+        signature
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", zlib.compress(raw))
+        + chunk(b"IEND", b"")
+    )
 
 
 def _png_size(path: Path) -> tuple[int, int] | None:
