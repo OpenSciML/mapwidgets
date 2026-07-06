@@ -104,7 +104,21 @@
         }
       }
 
-      function notifyElementClicked(elementType, elementProperties) {
+      const markerRegistry = new Map();
+
+      function pointFromGoogleLatLng(latLng) {
+        if (!latLng) {
+          return null;
+        }
+        const lat = typeof latLng.lat === "function" ? latLng.lat() : latLng.lat;
+        const lng = typeof latLng.lng === "function" ? latLng.lng() : latLng.lng;
+        if (lat === undefined || lng === undefined) {
+          return null;
+        }
+        return { lat, lng };
+      }
+
+      function notifyElementClicked(elementType, elementProperties, point = null) {
         if (!qtMapViewer || !qtMapViewer.on_element_click) {
           return;
         }
@@ -112,6 +126,7 @@
           type: elementType,
           properties: elementProperties.properties || {},
           element: elementProperties,
+          point,
         };
         qtMapViewer.on_element_click(elementType, JSON.stringify(payload));
       }
@@ -123,8 +138,20 @@
               map,
             ...googleMarkerProperties
           });
-          marker.addListener("click", () => {
-            notifyElementClicked("marker", markerProperties);
+          const markerId = markerProperties.properties && markerProperties.properties.id;
+          if (markerId) {
+            const existingMarker = markerRegistry.get(markerId);
+            if (existingMarker) {
+              existingMarker.map = null;
+            }
+            markerRegistry.set(markerId, marker);
+          }
+          marker.addListener("click", (event) => {
+            notifyElementClicked(
+              "marker",
+              markerProperties,
+              pointFromGoogleLatLng(event && event.latLng ? event.latLng : marker.position)
+            );
           });
           if (centerToMarker) {
             const { lat, lng } = markerProperties.position;
@@ -132,12 +159,20 @@
               map.panTo(newCenter);
           }
       }
+      function gmap_removeMarker(markerId) {
+          const marker = markerRegistry.get(markerId);
+          if (!marker) {
+            return;
+          }
+          marker.map = null;
+          markerRegistry.delete(markerId);
+      }
       async function gmap_addPolyline(polylineProperties, centerToPolyline = false) {
           const { properties, ...googlePolylineProperties } = polylineProperties;
           let polyline = new google.maps.Polyline(googlePolylineProperties);
           polyline.setMap(map);
-          polyline.addListener("click", () => {
-            notifyElementClicked("polyline", polylineProperties);
+          polyline.addListener("click", (event) => {
+            notifyElementClicked("polyline", polylineProperties, pointFromGoogleLatLng(event.latLng));
           });
           if(centerToPolyline) {
               map.panTo(polyline.getPath().getAt(0));
@@ -147,8 +182,8 @@
           const { properties, ...googlePolygonProperties } = polygonProperties;
           let polygon = new google.maps.Polygon(googlePolygonProperties);
           polygon.setMap(map);
-          polygon.addListener("click", () => {
-            notifyElementClicked("polygon", polygonProperties);
+          polygon.addListener("click", (event) => {
+            notifyElementClicked("polygon", polygonProperties, pointFromGoogleLatLng(event.latLng));
           });
           if(centerToPolygon && polygonProperties.paths && polygonProperties.paths.length > 0) {
               const firstPoint = polygonProperties.paths[0];

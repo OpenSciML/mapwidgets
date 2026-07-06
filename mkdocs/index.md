@@ -1,5 +1,9 @@
 # mapwidgets
 
+<p align="center">
+  <img src="assets/images/mapwidgets-icon.svg" alt="mapwidgets icon" width="128" height="128">
+</p>
+
 `mapwidgets` provides PySide6 map viewers with interchangeable JavaScript map
 backends. The same Python API can render interactive desktop maps with
 MapLibre GL JS or the Google Maps JavaScript API.

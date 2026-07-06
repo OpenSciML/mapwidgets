@@ -20,10 +20,13 @@ Returns the optimized GeoTIFF path.
 ## `generate_geotiff_tiles(input_path, output_dir=None, **options)`
 
 Generates XYZ PNG tiles from a georeferenced GeoTIFF and returns the tile
-folder.
+folder. Use `backend="gdal"` for `osgeo_utils.gdal2tiles` or
+`backend="python"` for rasterio-based rendering.
 
 Common options:
 
+- `backend="gdal"`
+- `bands=(1, 2, 3)`
 - `min_zoom=None`
 - `max_zoom=None`
 - `zoom_levels=None`
@@ -34,11 +37,18 @@ Common options:
 - `resampling="bilinear"`
 - `name=None`
 - `opacity=1.0`
+- `stretch_method="percentiles"`
+- `transparent_values=(0,)`
+- `transparent_ranges=None`
+- `transparent_match="any"`
+- `colormap=None`
+- `value_range=None`
+- `stretch_sample_size=1024`
 
 ## `prepare_geotiff_tiles(input_path, output_dir=None, **options)`
 
-Optimizes a GeoTIFF and generates XYZ PNG tiles from the optimized output. This
-is the helper used by `RasterLayer.from_tiled_geotiff()` when `optimize=True`.
+Optionally optimizes a GeoTIFF and generates XYZ PNG tiles from the selected
+backend. This is the helper used by `RasterLayer.from_tiled_geotiff()`.
 
 ## `validate_tile_directory(tiles_dir, bounds, min_zoom, max_zoom, tile_size=256)`
 

@@ -56,6 +56,7 @@ orthomosaic = RasterLayer.from_tiled_geotiff(
     "orthomosaic.tif",
     min_zoom=14,
     max_zoom=22,
+    backend="gdal",
 )
 
 viewer = (

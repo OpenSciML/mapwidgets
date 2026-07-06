@@ -3,16 +3,34 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from ._utils import file_base_url, read_geotiff_bounds, validate_lnglat_bounds
 
 
 @dataclass
 class RasterLayer:
-    """Raster tile layer, commonly generated from a GeoTIFF."""
+    """Raster tile layer consumed by map viewer backends.
+
+    Use `RasterLayer` when the browser should display an XYZ PNG tile pyramid.
+    The raw GeoTIFF is not streamed to the browser; construct layers from an
+    existing tile directory with `from_geotiff()` or generate tiles first with
+    `from_tiled_geotiff()`.
+
+    Attributes:
+        id: Stable layer id used by the frontend.
+        base_url: Tile root URL without `/{z}/{x}/{y}.png`.
+        name: Human-readable layer name.
+        min_zoom: Minimum available tile zoom.
+        max_zoom: Maximum available tile zoom.
+        tile_size: Tile width and height in pixels.
+        opacity: Raster opacity in the inclusive range 0-1.
+        cache_key: Optional cache-busting query value.
+        bounds: Optional WGS84 bounds with `north`, `south`, `east`, and `west`.
+    """
 
     id: str
     base_url: str
@@ -105,17 +123,28 @@ class RasterLayer:
         path: str | Path,
         *,
         output_dir: str | Path | None = None,
+        backend: Literal["gdal", "python"] = "gdal",
+        bands: Sequence[int] = (1, 2, 3),
         optimize: bool = True,
         optimized_path: str | Path | None = None,
         overwrite: bool = False,
         min_zoom: int | None = None,
         max_zoom: int | None = None,
+        zoom_levels: Iterable[int] | None = None,
         id: str | None = None,
         name: str | None = None,
         tile_size: int = 256,
         opacity: float = 1.0,
         max_tiles: int = 20_000,
         processes: int | None = None,
+        resampling: str = "bilinear",
+        stretch_method: str = "percentiles",
+        transparent_values: Sequence[float] | None = (0,),
+        transparent_ranges: Sequence[tuple[float | None, float | None]] | None = None,
+        transparent_match: Literal["any", "all"] = "any",
+        colormap: str | None = None,
+        value_range: tuple[float, float] | None = None,
+        stretch_sample_size: int = 1024,
     ) -> RasterLayer:
         """Generate XYZ tiles from a GeoTIFF and return a raster layer.
 
@@ -125,6 +154,13 @@ class RasterLayer:
             Source GeoTIFF path.
         output_dir
             Directory where XYZ tiles are written.
+        backend
+            Tile renderer. ``"gdal"`` uses ``osgeo_utils.gdal2tiles``.
+            ``"python"`` uses rasterio and supports selected bands,
+            colormaps, and transparent value/range masks.
+        bands
+            One-based source bands used by the Python backend. The GDAL
+            backend supports source-order bands only.
         optimize
             Whether to create an optimized COG before tiling.
         optimized_path
@@ -135,6 +171,8 @@ class RasterLayer:
             Minimum generated zoom.
         max_zoom
             Maximum generated zoom.
+        zoom_levels
+            Explicit zoom levels to generate.
         id
             Layer id used by the frontend.
         name
@@ -147,40 +185,53 @@ class RasterLayer:
             Safety limit for generated tile count.
         processes
             Number of GDAL worker processes.
+        resampling
+            Resampling method used by the selected backend.
+        stretch_method
+            Python backend display scaling method: ``"percentiles"`` or
+            ``"linear"``.
+        transparent_values
+            Exact source values hidden by the Python backend.
+        transparent_ranges
+            Inclusive value ranges hidden by the Python backend.
+        transparent_match
+            Whether transparency applies when ``"any"`` or ``"all"`` selected
+            bands match.
+        colormap
+            Optional Matplotlib colormap for single-band Python rendering.
+        value_range
+            Optional normalization range used by the Python backend.
+        stretch_sample_size
+            Maximum sample width or height used to estimate display ranges.
         """
-        from mapwidgets.raster_tiles import (
-            generate_geotiff_tiles,
-            prepare_geotiff_tiles,
-        )
+        from mapwidgets.raster_tiles import prepare_geotiff_tiles
 
         geotiff_path = Path(path)
-        if optimize:
-            tiles_dir = prepare_geotiff_tiles(
-                geotiff_path,
-                output_dir,
-                optimized_path=optimized_path,
-                overwrite=overwrite,
-                min_zoom=min_zoom,
-                max_zoom=max_zoom,
-                tile_size=tile_size,
-                max_tiles=max_tiles,
-                processes=processes,
-                name=name,
-                opacity=opacity,
-            )
-        else:
-            tiles_dir = generate_geotiff_tiles(
-                geotiff_path,
-                output_dir,
-                overwrite=overwrite,
-                min_zoom=min_zoom,
-                max_zoom=max_zoom,
-                tile_size=tile_size,
-                max_tiles=max_tiles,
-                processes=processes,
-                name=name,
-                opacity=opacity,
-            )
+        tiles_dir = prepare_geotiff_tiles(
+            geotiff_path,
+            output_dir,
+            backend=backend,
+            optimized_path=optimized_path,
+            optimize=optimize,
+            overwrite=overwrite,
+            bands=bands,
+            min_zoom=min_zoom,
+            max_zoom=max_zoom,
+            zoom_levels=zoom_levels,
+            tile_size=tile_size,
+            max_tiles=max_tiles,
+            processes=processes,
+            resampling=resampling,
+            name=name,
+            opacity=opacity,
+            stretch_method=stretch_method,
+            transparent_values=transparent_values,
+            transparent_ranges=transparent_ranges,
+            transparent_match=transparent_match,
+            colormap=colormap,
+            value_range=value_range,
+            stretch_sample_size=stretch_sample_size,
+        )
 
         metadata_path = tiles_dir / "metadata.json"
         metadata = (

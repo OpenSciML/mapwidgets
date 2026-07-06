@@ -6,6 +6,8 @@ use_directory_urls: true
 
 theme:
   name: material
+  logo: assets/images/mapwidgets-icon.svg
+  favicon: assets/images/mapwidgets-icon.svg
   features:
     - navigation.sections
     - navigation.top

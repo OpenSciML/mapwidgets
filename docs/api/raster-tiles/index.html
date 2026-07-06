@@ -20,7 +20,7 @@
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/mapwidgets-icon.svg">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
@@ -84,8 +84,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="mapwidgets" class="md-header__button md-logo" aria-label="mapwidgets" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/images/mapwidgets-icon.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -184,8 +183,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="mapwidgets" class="md-nav__button md-logo" aria-label="mapwidgets" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/images/mapwidgets-icon.svg" alt="logo">
 
     </a>
     mapwidgets
@@ -978,9 +976,12 @@ from the top-level package.</p>
 <p>Returns the optimized GeoTIFF path.</p>
 <h2 id="generate_geotiff_tilesinput_path-output_dirnone-options"><code>generate_geotiff_tiles(input_path, output_dir=None, **options)</code><a class="headerlink" href="#generate_geotiff_tilesinput_path-output_dirnone-options" title="Permanent link">&para;</a></h2>
 <p>Generates XYZ PNG tiles from a georeferenced GeoTIFF and returns the tile
-folder.</p>
+folder. Use <code>backend="gdal"</code> for <code>osgeo_utils.gdal2tiles</code> or
+<code>backend="python"</code> for rasterio-based rendering.</p>
 <p>Common options:</p>
 <ul>
+<li><code>backend="gdal"</code></li>
+<li><code>bands=(1, 2, 3)</code></li>
 <li><code>min_zoom=None</code></li>
 <li><code>max_zoom=None</code></li>
 <li><code>zoom_levels=None</code></li>
@@ -991,10 +992,17 @@ folder.</p>
 <li><code>resampling="bilinear"</code></li>
 <li><code>name=None</code></li>
 <li><code>opacity=1.0</code></li>
+<li><code>stretch_method="percentiles"</code></li>
+<li><code>transparent_values=(0,)</code></li>
+<li><code>transparent_ranges=None</code></li>
+<li><code>transparent_match="any"</code></li>
+<li><code>colormap=None</code></li>
+<li><code>value_range=None</code></li>
+<li><code>stretch_sample_size=1024</code></li>
 </ul>
 <h2 id="prepare_geotiff_tilesinput_path-output_dirnone-options"><code>prepare_geotiff_tiles(input_path, output_dir=None, **options)</code><a class="headerlink" href="#prepare_geotiff_tilesinput_path-output_dirnone-options" title="Permanent link">&para;</a></h2>
-<p>Optimizes a GeoTIFF and generates XYZ PNG tiles from the optimized output. This
-is the helper used by <code>RasterLayer.from_tiled_geotiff()</code> when <code>optimize=True</code>.</p>
+<p>Optionally optimizes a GeoTIFF and generates XYZ PNG tiles from the selected
+backend. This is the helper used by <code>RasterLayer.from_tiled_geotiff()</code>.</p>
 <h2 id="validate_tile_directorytiles_dir-bounds-min_zoom-max_zoom-tile_size256"><code>validate_tile_directory(tiles_dir, bounds, min_zoom, max_zoom, tile_size=256)</code><a class="headerlink" href="#validate_tile_directorytiles_dir-bounds-min_zoom-max_zoom-tile_size256" title="Permanent link">&para;</a></h2>
 <p>Validates that expected XYZ tile files exist for the given bounds and zoom
 range.</p>

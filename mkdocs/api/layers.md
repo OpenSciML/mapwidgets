@@ -65,3 +65,7 @@ Methods:
 - `map_config()`
 - `maplibre_config()`
 - `google_maps_config()`
+
+`RasterLayer.from_tiled_geotiff()` accepts `backend="gdal"` for
+`osgeo_utils.gdal2tiles` or `backend="python"` for rasterio rendering with
+selected bands, colormaps, and transparency masks.

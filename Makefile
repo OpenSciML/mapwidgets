@@ -1,8 +1,8 @@
 .PHONY: build check compile docs format format-check lint test type-check
 
-PYTHON_FILES = main.py src
+PYTHON_FILES = main.py src tests
 
-check: lint format-check type-check compile docs build
+check: lint format-check type-check compile test docs build
 
 lint:
 	uv run ruff check $(PYTHON_FILES)

@@ -57,6 +57,22 @@ layer = RasterLayer.from_geotiff(
 )
 ```
 
+Use `RasterLayer.from_tiled_geotiff()` when you want mapwidgets to create the
+tile pyramid before returning the layer:
+
+```python
+layer = RasterLayer.from_tiled_geotiff(
+    "orthomosaic.tif",
+    output_dir=".mapwidgets_tiles/rgb",
+    min_zoom=14,
+    max_zoom=22,
+    backend="gdal",
+)
+```
+
+Use `backend="python"` for false-color multispectral rendering, single-band
+colormaps, or transparent value/range masks.
+
 ## Zooming to layers
 
 You can zoom to a layer when adding it:

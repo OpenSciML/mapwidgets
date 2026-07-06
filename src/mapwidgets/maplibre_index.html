@@ -138,7 +138,16 @@
         return [point.lng, point.lat];
       }
 
-      function notifyElementClicked(elementType, elementProperties) {
+      const markerRegistry = new Map();
+
+      function pointFromMapLibreLngLat(lngLat) {
+        if (!lngLat) {
+          return null;
+        }
+        return { lat: lngLat.lat, lng: lngLat.lng };
+      }
+
+      function notifyElementClicked(elementType, elementProperties, point = null) {
         if (!qtMapViewer || !qtMapViewer.on_element_click) {
           return;
         }
@@ -146,6 +155,7 @@
           type: elementType,
           properties: elementProperties.properties || {},
           element: elementProperties,
+          point,
         };
         qtMapViewer.on_element_click(elementType, JSON.stringify(payload));
       }
@@ -265,12 +275,30 @@
           marker.setPopup(new maplibregl.Popup().setText(markerProperties.title));
         }
         marker.addTo(map);
+        const markerId = markerProperties.properties && markerProperties.properties.id;
+        if (markerId) {
+          const existingMarker = markerRegistry.get(markerId);
+          if (existingMarker) {
+            existingMarker.remove();
+          }
+          markerRegistry.set(markerId, marker);
+        }
         marker.getElement().addEventListener("click", () => {
-          notifyElementClicked("marker", markerProperties);
+          const [lng, lat] = marker.getLngLat().toArray();
+          notifyElementClicked("marker", markerProperties, { lat, lng });
         });
         if (centerToMarker) {
           map.panTo(lngLat(markerProperties.position));
         }
+      }
+
+      function maplibre_removeMarker(markerId) {
+        const marker = markerRegistry.get(markerId);
+        if (!marker) {
+          return;
+        }
+        marker.remove();
+        markerRegistry.delete(markerId);
       }
 
       function maplibre_addPolyline(polylineProperties, centerToPolyline = false) {
@@ -300,8 +328,8 @@
             "line-width": polylineProperties.strokeWeight || 3,
           },
         });
-        map.on("click", layerId, () => {
-          notifyElementClicked("polyline", polylineProperties);
+        map.on("click", layerId, (event) => {
+          notifyElementClicked("polyline", polylineProperties, pointFromMapLibreLngLat(event.lngLat));
         });
         map.on("mouseenter", layerId, () => {
           map.getCanvas().style.cursor = "pointer";
@@ -359,8 +387,8 @@
             "line-width": polygonProperties.strokeWeight || 2,
           },
         });
-        map.on("click", fillLayerId, () => {
-          notifyElementClicked("polygon", polygonProperties);
+        map.on("click", fillLayerId, (event) => {
+          notifyElementClicked("polygon", polygonProperties, pointFromMapLibreLngLat(event.lngLat));
         });
         map.on("mouseenter", fillLayerId, () => {
           map.getCanvas().style.cursor = "pointer";

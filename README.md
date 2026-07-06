@@ -165,6 +165,7 @@ orthomosaic = RasterLayer.from_tiled_geotiff(
     "orthomosaic.tif",
     min_zoom=14,
     max_zoom=22,
+    backend="gdal",
 )
 
 viewer = (
@@ -225,21 +226,36 @@ layer = RasterLayer.from_geotiff(
 ```
 
 For the common case, `from_tiled_geotiff()` runs the same preparation step and
-returns the layer object:
+returns the layer object. Use `backend="gdal"` for source-order RGB GeoTIFFs:
 
 ```python
 layer = RasterLayer.from_tiled_geotiff(
     "orthomosaic.tif",
     min_zoom=14,
     max_zoom=22,
+    backend="gdal",
     overwrite=False,
+)
+```
+
+Use `backend="python"` when you need arbitrary band selections, colormaps, or
+transparent value/range masks:
+
+```python
+layer = RasterLayer.from_tiled_geotiff(
+    "multispectral_orthomosaic.tif",
+    output_dir=".mapwidgets_tiles/false_color",
+    bands=(6, 4, 2),
+    zoom_levels=range(18, 22),
+    backend="python",
+    overwrite=True,
 )
 ```
 
 The tiling helper:
 
 - creates an optimized GeoTIFF suitable for tiling;
-- runs `gdal2tiles` with XYZ tile coordinates;
+- runs the selected backend with XYZ tile coordinates;
 - writes tile metadata;
 - fills missing edge tiles with transparent PNGs so MapLibre does not spam tile
   errors outside the raster footprint;

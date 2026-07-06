@@ -20,7 +20,7 @@
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/mapwidgets-icon.svg">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
@@ -84,8 +84,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="mapwidgets" class="md-header__button md-logo" aria-label="mapwidgets" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/images/mapwidgets-icon.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -184,8 +183,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="mapwidgets" class="md-nav__button md-logo" aria-label="mapwidgets" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/images/mapwidgets-icon.svg" alt="logo">
 
     </a>
     mapwidgets
@@ -540,10 +538,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#one-step-helper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        One-step helper
+        One-Step Helper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#separate-optimization-and-tiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Separate Optimization And Tiling
       
     </span>
   </a>
@@ -555,6 +575,17 @@
     <span class="md-ellipsis">
       
         What the tiling helper does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#huge-rasters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Huge Rasters
       
     </span>
   </a>
@@ -869,10 +900,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#one-step-helper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        One-step helper
+        One-Step Helper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#separate-optimization-and-tiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Separate Optimization And Tiling
       
     </span>
   </a>
@@ -884,6 +937,17 @@
     <span class="md-ellipsis">
       
         What the tiling helper does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#huge-rasters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Huge Rasters
       
     </span>
   </a>
@@ -921,6 +985,72 @@
 <h1 id="geotiff-tiling">GeoTIFF Tiling<a class="headerlink" href="#geotiff-tiling" title="Permanent link">&para;</a></h1>
 <p>For large orthomosaics, prepare the TIFF for tiling and generate browser-ready
 XYZ PNG tiles before adding it to the map.</p>
+<p>Mapwidgets owns raster tile generation. Use <code>RasterLayer.from_tiled_geotiff()</code>
+for the common path, or call the lower-level helpers in <code>mapwidgets.raster_tiles</code>
+when you need to separate optimization from tile generation.</p>
+<h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">&para;</a></h2>
+<p>Two tile backends are available:</p>
+<ul>
+<li><code>backend="gdal"</code> uses <code>osgeo_utils.gdal2tiles</code>. It is the fastest path for
+  file-backed source-order RGB GeoTIFFs.</li>
+<li><code>backend="python"</code> uses rasterio. It supports arbitrary one-based band
+  selections, colormaps, value ranges, and transparent value/range masks.</li>
+</ul>
+<h2 id="one-step-helper">One-Step Helper<a class="headerlink" href="#one-step-helper" title="Permanent link">&para;</a></h2>
+<p>For normal RGB rasters, use the GDAL backend:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mapwidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">RasterLayer</span>
+
+<span class="n">layer</span> <span class="o">=</span> <span class="n">RasterLayer</span><span class="o">.</span><span class="n">from_tiled_geotiff</span><span class="p">(</span>
+    <span class="s2">&quot;orthomosaic.tif&quot;</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;.mapwidgets_tiles/rgb&quot;</span><span class="p">,</span>
+    <span class="n">bands</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+    <span class="n">min_zoom</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span>
+    <span class="n">max_zoom</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;gdal&quot;</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>For multispectral false-color display, use the Python backend:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mapwidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">RasterLayer</span>
+
+<span class="n">layer</span> <span class="o">=</span> <span class="n">RasterLayer</span><span class="o">.</span><span class="n">from_tiled_geotiff</span><span class="p">(</span>
+    <span class="s2">&quot;multispectral_orthomosaic.tif&quot;</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;.mapwidgets_tiles/false_color&quot;</span><span class="p">,</span>
+    <span class="n">bands</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+    <span class="n">zoom_levels</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">22</span><span class="p">),</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>For a single-band index GeoTIFF, use a colormap and explicit value range:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mapwidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">RasterLayer</span>
+
+<span class="n">layer</span> <span class="o">=</span> <span class="n">RasterLayer</span><span class="o">.</span><span class="n">from_tiled_geotiff</span><span class="p">(</span>
+    <span class="s2">&quot;ndvi.tif&quot;</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;.mapwidgets_tiles/ndvi&quot;</span><span class="p">,</span>
+    <span class="n">bands</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span>
+    <span class="n">zoom_levels</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">22</span><span class="p">),</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
+    <span class="n">colormap</span><span class="o">=</span><span class="s2">&quot;RdYlGn&quot;</span><span class="p">,</span>
+    <span class="n">value_range</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+    <span class="n">transparent_ranges</span><span class="o">=</span><span class="p">((</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),),</span>
+    <span class="n">transparent_values</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Add the returned layer to any mapwidgets viewer:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">mapwidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapViewer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">PySide6.QtWidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">QApplication</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">QApplication</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span> <span class="ow">or</span> <span class="n">QApplication</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[:</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">viewer</span> <span class="o">=</span> <span class="n">MapViewer</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="s2">&quot;maplibre&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">1200</span><span class="p">,</span> <span class="mi">800</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">viewer</span><span class="o">.</span><span class="n">add_layer</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">zoom_to</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">viewer</span><span class="o">.</span><span class="n">wait_for_map_ready</span><span class="p">()</span>
+<span class="n">app</span><span class="o">.</span><span class="n">exec</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="separate-optimization-and-tiling">Separate Optimization And Tiling<a class="headerlink" href="#separate-optimization-and-tiling" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mapwidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_geotiff_tiles</span><span class="p">,</span> <span class="n">optimize_geotiff_for_tiling</span>
 
 <span class="n">optimized</span> <span class="o">=</span> <span class="n">optimize_geotiff_for_tiling</span><span class="p">(</span><span class="s2">&quot;orthomosaic.tif&quot;</span><span class="p">)</span>
@@ -940,28 +1070,32 @@ XYZ PNG tiles before adding it to the map.</p>
     <span class="n">max_zoom</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span>
 <span class="p">)</span>
 </code></pre></div>
-<h2 id="one-step-helper">One-step helper<a class="headerlink" href="#one-step-helper" title="Permanent link">&para;</a></h2>
-<p>For the common case, <code>from_tiled_geotiff()</code> runs the same preparation step and
-returns a <code>RasterLayer</code> object:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mapwidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">RasterLayer</span>
-
-<span class="n">layer</span> <span class="o">=</span> <span class="n">RasterLayer</span><span class="o">.</span><span class="n">from_tiled_geotiff</span><span class="p">(</span>
-    <span class="s2">&quot;orthomosaic.tif&quot;</span><span class="p">,</span>
-    <span class="n">min_zoom</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span>
-    <span class="n">max_zoom</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span>
-    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-<span class="p">)</span>
-</code></pre></div>
 <h2 id="what-the-tiling-helper-does">What the tiling helper does<a class="headerlink" href="#what-the-tiling-helper-does" title="Permanent link">&para;</a></h2>
 <p>The tiling helper:</p>
 <ul>
 <li>creates an optimized GeoTIFF suitable for tiling;</li>
-<li>runs <code>gdal2tiles</code> with XYZ tile coordinates;</li>
+<li>runs the selected backend with XYZ tile coordinates;</li>
 <li>writes <code>metadata.json</code> next to the tiles;</li>
 <li>fills missing edge tiles with transparent PNGs so MapLibre does not report
   repeated tile errors outside the raster footprint;</li>
 <li>reuses an existing complete tile folder when <code>overwrite=False</code>.</li>
 </ul>
+<h2 id="huge-rasters">Huge Rasters<a class="headerlink" href="#huge-rasters" title="Permanent link">&para;</a></h2>
+<p>Very large orthomosaics need a preparation step before tile generation. A 10 GB
+raster stored as scanline strips without internal overviews can be slow because
+every map tile may require expensive random reads from the original image.</p>
+<p><code>RasterLayer.from_tiled_geotiff(..., optimize=True)</code> and
+<code>prepare_geotiff_tiles(..., optimize=True)</code> create a Cloud Optimized GeoTIFF
+before tiling. The optimization uses practical GDAL defaults:</p>
+<ul>
+<li><code>BIGTIFF=IF_SAFER</code> allows output files larger than 4 GB when needed.</li>
+<li><code>COMPRESS=DEFLATE</code> applies lossless compression.</li>
+<li><code>BLOCKSIZE=512</code> stores the raster in internal 512 x 512 tiles.</li>
+<li><code>OVERVIEWS=AUTO</code> builds lower-resolution internal pyramids.</li>
+<li><code>NUM_THREADS=ALL_CPUS</code> lets GDAL use all CPU cores during conversion.</li>
+</ul>
+<p>The conversion preserves pixel size, width, height, CRS, bounds, and bands
+unless you pass explicit resampling options.</p>
 <h2 id="zoom-level-guidance">Zoom level guidance<a class="headerlink" href="#zoom-level-guidance" title="Permanent link">&para;</a></h2>
 <p>Use higher tile zooms for high-resolution drone orthomosaics. If tiles are only
 generated to z16 and the map is zoomed to z20, the browser stretches the z16

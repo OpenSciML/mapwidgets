@@ -333,6 +333,12 @@ class BaseMapViewer:
         )
         return self
 
+    def remove_marker(self, marker_id: str) -> Self:
+        """Remove a marker by its ``properties.id`` value and return this viewer."""
+        marker_id_json = json.dumps(marker_id)
+        self.run_script(f"{self._backend_function('removeMarker')}({marker_id_json});")
+        return self
+
     def add_polyline(self, polyline: Polyline, center_to: bool = False) -> Self:
         """Add a polyline to the embedded map and return this viewer."""
         center_to_js = "true" if center_to else "false"

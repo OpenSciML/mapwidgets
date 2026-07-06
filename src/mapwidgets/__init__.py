@@ -26,6 +26,8 @@ __all__ = [
     "RectangleBounds",
     "VectorLayer",
     "generate_geotiff_tiles",
+    "generate_geotiff_tiles_gdal",
+    "generate_geotiff_tiles_python",
     "optimize_geotiff_for_tiling",
     "prepare_geotiff_tiles",
 ]
@@ -49,17 +51,23 @@ def __getattr__(name: str) -> Any:
         }[name]
     if name in {
         "generate_geotiff_tiles",
+        "generate_geotiff_tiles_gdal",
+        "generate_geotiff_tiles_python",
         "optimize_geotiff_for_tiling",
         "prepare_geotiff_tiles",
     }:
         from .raster_tiles import (
             generate_geotiff_tiles,
+            generate_geotiff_tiles_gdal,
+            generate_geotiff_tiles_python,
             optimize_geotiff_for_tiling,
             prepare_geotiff_tiles,
         )
 
         return {
             "generate_geotiff_tiles": generate_geotiff_tiles,
+            "generate_geotiff_tiles_gdal": generate_geotiff_tiles_gdal,
+            "generate_geotiff_tiles_python": generate_geotiff_tiles_python,
             "optimize_geotiff_for_tiling": optimize_geotiff_for_tiling,
             "prepare_geotiff_tiles": prepare_geotiff_tiles,
         }[name]
