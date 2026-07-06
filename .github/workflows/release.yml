@@ -41,7 +41,7 @@ jobs:
       - name: Read package version
         id: package
         run: |
-          version="$(uv run python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          version="$(uv version --short)"
           short_sha="$(git rev-parse --short HEAD)"
           tag="v${version}-${short_sha}"
           {
