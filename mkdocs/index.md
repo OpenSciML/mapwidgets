@@ -1,8 +1,12 @@
 # mapwidgets
 
-<p align="center">
-  <img src="assets/images/mapwidgets-icon.svg" alt="mapwidgets icon" width="128" height="128">
-</p>
+<div class="mw-docs-brand">
+  <img src="assets/images/mapwidgets-icon.svg" alt="mapwidgets logo">
+  <div class="mw-docs-badges" aria-label="Project labels" data-search-exclude>
+    <span class="mw-docs-badge"><span>code style</span><strong>black</strong></span>
+    <span class="mw-docs-badge mw-docs-badge--contrib"><span>contributions</span><strong>welcome</strong></span>
+  </div>
+</div>
 
 `mapwidgets` provides PySide6 map viewers with interchangeable JavaScript map
 backends. The same Python API can render interactive desktop maps with

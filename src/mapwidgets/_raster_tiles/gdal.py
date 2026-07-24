@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
+import subprocess
+import sys
 
 from .common import (
     DEFAULT_TILE_SIZE,
@@ -101,7 +103,12 @@ def generate_geotiff_tiles_gdal(
             "`pip install mapwidgets[geospatial]` or use backend='python'."
         ) from exc
 
-    result = gdal2tiles.main(argv, called_from_main=False)
+    try:
+        result = gdal2tiles.main(argv, called_from_main=False)
+    except TypeError as exc:
+        if "called_from_main" not in str(exc):
+            raise
+        result = _run_gdal2tiles_subprocess(argv)
     if result not in (0, None):
         raise RuntimeError(f"gdal2tiles failed with exit code {result}.")
 
@@ -122,3 +129,18 @@ def generate_geotiff_tiles_gdal(
         opacity=opacity,
     )
     return output
+
+
+def _run_gdal2tiles_subprocess(argv: list[str]) -> int:
+    """Run older gdal2tiles entrypoints out-of-process to contain sys.exit."""
+    completed = subprocess.run(
+        [sys.executable, "-m", "osgeo_utils.gdal2tiles", *argv],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode not in (0, None):
+        message = completed.stderr.strip() or completed.stdout.strip()
+        if message:
+            raise RuntimeError("gdal2tiles failed with exit code {0}: {1}".format(completed.returncode, message))
+    return completed.returncode
